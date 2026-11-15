@@ -28,10 +28,10 @@
         <Message>
             <FontEnglish>Meiryo</FontEnglish>
             <FontJapanese>Meiryo</FontJapanese>
-            <Size>10</Size>
-            <MaxLength>81</MaxLength>
+            <Size>12</Size>
+            <MaxLength>61</MaxLength>
             <Width>610</Width>
-            <Height>128</Height>
+            <Height>150</Height>
             <TextOffsetX>10</TextOffsetX>
             <TextOffsetY>-8</TextOffsetY>
             <Dialogue>
@@ -58,7 +58,7 @@
             <Width>26</Width>
             <Height>16</Height>
             <OffsetX>575</OffsetX>
-            <OffsetY>105</OffsetY>
+            <OffsetY>127</OffsetY>
         </Prompt>
         <Timer>
             <TextOffsetX>580</TextOffsetX>
