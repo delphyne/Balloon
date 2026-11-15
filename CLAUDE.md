@@ -38,11 +38,14 @@ In game:
 make check                     # lint and tests
 luacheck .                     # lint alone
 luajit test/test_Balloon.lua   # tests alone; Windower is stubbed
+make native                    # rebuild libs/balloonpad.dll (mingw-w64)
 ```
 
 Keep the Makefile, `.luacheckrc`, and test harness in step with `../ahbuddy` and `../randommount`.
 
 The test harness stubs `luau`, `texts`, `images`, `config`, `chat.chars`, `res`, and `windower`, then `dofile`s `Balloon.lua` and drives the `incoming text`, `addon command`, `keyboard`, and `prerender` handlers. It parses the real `themes/default/theme.xml` so `theme.lua` runs against shipped data. `Balloon.lua` keeps its state in locals, so tests observe results through the shared `ui` module (`require('ui')` returns the same table) and the stub widgets' recorded `_v` fields.
+
+The test harness also preloads a stub `balloonpad` module (see Gamepad below): set `pad_stub.pressed` to an XInput button mask and the next `prerender` sees it.
 
 Windower's Lua accepts `"fmt":format(x)` (method call on a string literal). Standard luacheck/luajit do not parse it, so write `("fmt"):format(x)` instead. `.luacheckrc` whitelists the luau globals (`S`, `L`, `config`, `log`, `texts`, `images`, `res`, `chars`) and the `string`/`coroutine` extensions; add to it rather than sprinkling inline `-- luacheck:` comments.
 
@@ -67,6 +70,15 @@ Balloons close on Enter, on leaving a conversation or zoning (packets `0x52`/`0x
 **`theme.lua`** has one function, `theme.apply`, which translates the raw `theme.xml` table (loaded via Windower `config`, so keys are lowercased: `textoffsetx`, `fontenglish`, ...) into a normalised `options` table with snake_case keys and fallbacks (System falls back to Dialogue; Timer falls back to Prompt position + Message font). Any new theme setting must be plumbed through here.
 
 **`ui.lua`** owns the Windower `images`/`texts` primitives and all layout math. `ui:position()` recomputes every element from the message background's position, theme offsets, and `Scale`; it is called after any change in scale, portrait presence, or prompt animation. `ui:set_character(name)` resolves portraits and per-character balloon backgrounds. `ui:set_type(mode)` swaps dialogue vs system styling. Text reveal animation and prompt bounce run from the `prerender` event via `animate_text_display`/`animate_prompt`.
+
+## Gamepad (native module)
+
+Windower 4 only delivers keyboard and mouse events to addons, and advancing dialogue with a controller sends no packet, so Balloon cannot see a controller advance through the Lua API. It can, however, load a native Lua C module: Windower addons may extend `package.cpath` and `require` a DLL linked against `LuaCore.dll`, which exports the Lua 5.1 C API (the XIPivot addon does the same). `native/balloonpad.c` is that module. It polls XInput once per frame from `prerender` and reports newly pressed buttons; a face-button press while a prompted balloon is up calls `advance()`, which hides the prompt indicator but keeps the text until the next line or the NPC release packet.
+
+- The built DLL is committed at `libs/balloonpad.dll` because users need it. Rebuild with `make native` after touching the C file; it needs `i686-w64-mingw32-gcc`, Lua 5.1 compatible headers (LuaJIT's are fine), and Windower's `plugins/LuaCore.dll` to link against.
+- Loading is wrapped in `pcall`; without the DLL or a controller everything degrades to the old behaviour. `//bl pad` reports the module state and `//bl debug pad` prints presses.
+- `//lua reload balloon` picks up a rebuilt DLL. Windower closes the addon's Lua state on reload, and LuaCore has stock Lua 5.1 `loadlib`, whose finaliser calls `FreeLibrary`, so the module unloads with the state and the next `require` maps the new file. `make native` builds to a temp file and renames it into place so the old mapping is never overwritten while the game still has it.
+- XInput only. The game is configured with XInput on (`padmode000` in the Wine registry) and Wine exposes controllers as XInput devices, so this is the common case; a DirectInput-only pad would show as "not connected".
 
 ## Themes and portraits
 

@@ -192,6 +192,10 @@ function ui:hide()
     self._hidden = true
 end
 
+function ui:hide_prompt()
+    self.prompt:hide()
+end
+
 function ui:show(timed)
     self.message_background:show()
     self.message_text:show()

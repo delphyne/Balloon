@@ -29,7 +29,7 @@
 --
 _addon.author = 'Originally by Hando, English support added by Yuki & Kenshi, themes added by Ghosty'
 _addon.name = 'Balloon'
-_addon.version = '0.13'
+_addon.version = '0.14'
 _addon.commands = {'balloon','bl'}
 
 require('luau')
@@ -83,6 +83,49 @@ balloon.timer_running = false
 balloon.last_text = ''
 balloon.last_mode = 0
 balloon.movement_thread = nil
+balloon.advanced = false
+balloon.pad_connected = false
+balloon.pad_last_pressed = 0
+
+-- gamepad support: Windower only delivers keyboard and mouse events to addons,
+-- so native/balloonpad.c polls XInput for us. It is optional; without the DLL
+-- (or without a controller) everything else works as before.
+local PAD_BUTTONS = { -- XInput wButtons bits
+	{0x1000, 'A'}, {0x2000, 'B'}, {0x4000, 'X'}, {0x8000, 'Y'},
+	{0x0010, 'Start'}, {0x0020, 'Back'}, {0x0100, 'LB'}, {0x0200, 'RB'},
+	{0x0040, 'LS'}, {0x0080, 'RS'},
+	{0x0001, 'Up'}, {0x0002, 'Down'}, {0x0004, 'Left'}, {0x0008, 'Right'},
+}
+-- the face buttons are the only ones that advance dialogue
+local PAD_FACE_BUTTONS = 0x1000 + 0x2000 + 0x4000 + 0x8000
+
+local pad = nil
+local pad_error = nil
+do
+	-- package.cpath doesn't like backslashes
+	local addon_path = windower.addon_path:gsub('\\', '/')
+	package.cpath = package.cpath .. ';' .. addon_path .. 'libs/?.dll'
+	local ok, result = pcall(require, 'balloonpad')
+	if ok then pad = result else pad_error = result end
+end
+
+local function pad_has_any(mask, bits)
+	for _, button in ipairs(PAD_BUTTONS) do
+		local bit = button[1]
+		if math.floor(bits / bit) % 2 == 1 and math.floor(mask / bit) % 2 == 1 then
+			return true
+		end
+	end
+	return false
+end
+
+local function pad_button_names(mask)
+	local names = {}
+	for _, button in ipairs(PAD_BUTTONS) do
+		if math.floor(mask / button[1]) % 2 == 1 then names[#names+1] = button[2] end
+	end
+	return #names > 0 and table.concat(names, '+') or 'none'
+end
 
 -------------------------------------------------------------------------------
 
@@ -125,7 +168,17 @@ function open(timed)
 	ui:show(timed)
 
 	balloon.waiting_to_close = timed
+	balloon.advanced = false
 	balloon.on = true
+end
+
+-- the player has advanced a prompted line: the game has moved on, but the
+-- next line (or the end of the conversation) may take a moment to arrive,
+-- so drop the "press to continue" indicator while keeping the text up
+function advance()
+	if not balloon.on or balloon.waiting_to_close or balloon.advanced then return end
+	balloon.advanced = true
+	ui:hide_prompt()
 end
 
 function close()
@@ -448,7 +501,8 @@ windower.register_event("addon command", function(command, ...)
 		t[#t+1] = "     //Balloon animate - toggle the advancement prompt indicator bouncing"
 		t[#t+1] = "     //Balloon portrait - toggle the display of character portraits, if the theme has settings for them"
 		t[#t+1] = "     //Balloon move_closes - toggle balloon auto-close on player movement"
-		t[#t+1] = "     //Balloon debug off/all/mode/codes/chunk/process/wrap/chars/elements - enable debug modes"
+		t[#t+1] = "     //Balloon pad - report gamepad support status"
+		t[#t+1] = "     //Balloon debug off/all/mode/codes/chunk/process/wrap/chars/elements/pad - enable debug modes"
 		t[#t+1] = "     //Balloon test <name> : <message> - display a test balloon"
 		t[#t+1] = "　"
 		for tk,tv in pairs(t) do
@@ -550,6 +604,19 @@ windower.register_event("addon command", function(command, ...)
 	elseif command == 'test' then
 		process_balloon(args:concat(' '), 150)
 
+	elseif command == 'pad' then
+		if not pad then
+			log("gamepad module not loaded: " .. tostring(pad_error))
+		else
+			local connected, buttons, _, _, slot = pad.poll()
+			if connected then
+				log(("gamepad connected in slot %d, held: %s, last pressed: %s"):format(
+					slot, pad_button_names(buttons), pad_button_names(balloon.pad_last_pressed)))
+			else
+				log("gamepad module loaded, but no XInput controller is connected")
+			end
+		end
+
 	end
 
 	config.save(settings)
@@ -565,6 +632,18 @@ windower.register_event("prerender",function()
 			ui:animate_prompt(balloon.frame_count)
 		end
 		ui:animate_text_display(settings.TextSpeed)
+	end
+
+	if pad then
+		local connected, _, pressed = pad.poll()
+		balloon.pad_connected = connected
+		if pressed ~= 0 then
+			balloon.pad_last_pressed = pressed
+			if S{'pad', 'all'}[balloon.debug] then print("Pad pressed: " .. pad_button_names(pressed)) end
+			if pad_has_any(pressed, PAD_FACE_BUTTONS) then
+				advance()
+			end
+		end
 	end
 end)
 

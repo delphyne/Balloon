@@ -75,6 +75,8 @@ Windower4 unofficial add-on Balloon
 	Toggle advancement prompt animation.
 	//Bl portrait
 	Toggle character portraits.
+	//Bl pad
+	Report gamepad support status (see ver 0.14 below).
 	//Bl help
 	Help display
 
@@ -135,6 +137,11 @@ Windower4 unofficial add-on Balloon
 		Toggleable globally with //bl portrait.
 		Themes can choose to include support for them or not.
 		Themes can also have a slightly different layout with/without portraits.
+	ver 0.14 15/11/26 Controller support.
+		Advancing a prompted line with a gamepad face button now hides the "press to continue" indicator while the next line loads.
+		Windower only delivers keyboard and mouse events to addons, so this uses a small native module (libs/balloonpad.dll, source in native/) that polls XInput. It needs no changes to your controller bindings; if the DLL is missing or no XInput controller is present the addon works as before.
+		//bl pad reports whether the module loaded and what it sees; //bl debug pad prints button presses.
+		The game's music note, sharp and flat symbols now display instead of a missing-glyph box.
 
 Send any feedback/questions to Ghosty in the #unofficial-addons channel on the Windower Discord.
 Or open an issue on the GitHub repo at https://github.com/StarlitGhost/Balloon

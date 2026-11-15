@@ -132,6 +132,19 @@ local function widget()
     end})
 end
 package.preload['texts'] = function() return {new = widget} end
+
+-- The native gamepad module (native/balloonpad.c) is stubbed: set
+-- pad_stub.pressed to an XInput button mask and the next poll reports it.
+local pad_stub = {pressed = 0}
+package.preload['balloonpad'] = function()
+    return {
+        poll = function()
+            local pressed = pad_stub.pressed
+            pad_stub.pressed = 0
+            return true, pressed, pressed, 0, 0
+        end,
+    }
+end
 package.preload['images'] = function() return {new = widget} end
 res = {zones = {
     [1] = {en = 'Southern San d\'Oria'},
@@ -296,6 +309,32 @@ line = 'Iroha : Portraits off.' .. PROMPT
 incoming_text(line, line, 150, 150, false)
 check('//bl portrait toggles portraits off', ui.portrait._v.visible, false)
 command('portrait')
+
+-------------------------------------------------------------------------------
+-- gamepad
+
+line = 'Iroha : Press to continue.' .. PROMPT
+incoming_text(line, line, 150, 150, false)
+check('prompt shown before any pad input', ui.prompt._v.visible, true)
+pad_stub.pressed = 0x0010 -- Start
+handlers['prerender']()
+check('non-face button leaves the prompt alone', ui.prompt._v.visible, true)
+pad_stub.pressed = 0x1000 -- A
+handlers['prerender']()
+check('face button hides the prompt', ui.prompt._v.visible, false)
+check('face button keeps the balloon open', ui:hidden(), false)
+check('face button keeps the text', ui.message_text:text(), '\n Press to continue.')
+
+line = 'Iroha : Next line.' .. PROMPT
+incoming_text(line, line, 150, 150, false)
+check('next prompted line shows the prompt again', ui.prompt._v.visible, true)
+
+line = 'Iroha : No prompt here.'
+incoming_text(line, line, 144, 144, false)
+pad_stub.pressed = 0x1000
+handlers['prerender']()
+check('face button leaves a timed balloon open', ui:hidden(), false)
+check('timed balloon keeps its countdown', ui.timer_text._v.visible, true)
 
 -------------------------------------------------------------------------------
 -- commands

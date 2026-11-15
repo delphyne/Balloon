@@ -13,8 +13,13 @@ drive the pacing (advance when the line finishes, hold while it plays).
 ## Constraints discovered
 
 **The player uses a controller.** Windower's Lua `keyboard` event only sees
-DirectInput keyboard input, so an addon cannot see the confirm button. There
-is no gamepad event in Windower 4.
+keyboard input and there is no gamepad event in Windower 4. **Solved** on
+2026-11-15 by `native/balloonpad.c`: Windower addons can `require` a native
+Lua C module linked against `LuaCore.dll` (XIPivot does this), so Balloon
+polls XInput itself from `prerender`. A face-button press while a prompted
+balloon is up now calls `advance()`. The same signal is what the voice
+reader needs to know the player moved on. See the Gamepad section of
+CLAUDE.md.
 
 **Advancing dialogue sends no packet.** The client runs NPC event scripts
 locally from its DAT files. The server starts an event with one packet and
@@ -34,10 +39,11 @@ reader that is the same signal: stop the current line, speak the next or
 stop. The only gap is a cutscene that animates after an advance with no
 text, where speech runs on briefly.
 
-**A plugin could do more** (hook DirectInput for the gamepad, read the
-client's dialogue-wait flag from memory, block input until speech ends,
-read choice-menu text which never reaches the chat log), but the Windower 4
-plugin SDK was never public, so treat that as unavailable. Ashita v4 exposes
+**Native code is available after all.** The same native-module route could
+read the client's dialogue-wait flag from memory or read choice-menu text
+(which never reaches the chat log) if those ever matter; the plugin SDK is
+not needed. Blocking controller input until speech ends is still not
+possible this way, since the module only observes XInput. Ashita v4 exposes
 memory reads and controller events to Lua addons, but it is a different
 launcher from the Lumoria flatpak in use.
 
@@ -118,11 +124,15 @@ above.
 
 ## Next steps
 
-1. In game, confirm `setkey enter` advances dialogue under Wine
+1. In game, confirm the gamepad module loads and sees presses: `//bl pad`,
+   then `//bl debug pad` while talking to an NPC. The prompt indicator
+   should vanish on the first face-button press.
+2. Confirm `setkey enter` advances dialogue under Wine
    (`//setkey enter down` then `//setkey enter up`, or via
-   `windower.send_command`).
-2. Run `//bl debug chunk` at an NPC and page through with the controller to
-   confirm no outgoing packet fires per advance. Turn it off promptly.
-3. Prototype the helper with Piper on the host and a file-drop queue; wire
-   Balloon to emit lines and poll markers.
-4. Decide voice map format and seed it from the existing portrait list.
+   `windower.send_command`). Auto-advance for the voice reader depends on it.
+3. Optionally run `//bl debug chunk` at an NPC and page through to confirm
+   no outgoing packet fires per advance. Turn it off promptly.
+4. Prototype the helper with Piper on the host and a file-drop queue; wire
+   Balloon to emit lines and poll markers. `balloon.advanced` is the hook for
+   "player moved on, stop speaking".
+5. Decide voice map format and seed it from the existing portrait list.

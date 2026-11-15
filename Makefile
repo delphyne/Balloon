@@ -7,6 +7,7 @@
 #   make test        run the tests under luajit
 #   make lint        run luacheck
 #   make check       both
+#   make native      build libs/balloonpad.dll (needs i686-w64-mingw32-gcc)
 #
 # The Windower folder is found automatically: the Lumoria flatpak prefix on
 # Linux, else a plain Wine prefix. Set WINDOWER to point somewhere else:
@@ -26,7 +27,17 @@ WINDOWER ?= $(firstword $(CANDIDATES))
 ADDONS := $(WINDOWER)/addons
 LINK := $(ADDONS)/$(NAME)
 
-.PHONY: install uninstall where test lint check
+# The gamepad module is a 32-bit Windows DLL linked against Windower's
+# LuaCore.dll. Any Lua 5.1 compatible headers will do; LuaJIT's are 5.1.
+CC32 ?= i686-w64-mingw32-gcc
+LUA_INC ?= $(firstword $(wildcard \
+	/home/linuxbrew/.linuxbrew/include/luajit-2.1 \
+	/usr/include/luajit-2.1 \
+	/usr/include/lua5.1 \
+	/usr/include/lua-5.1))
+LUACORE := $(WINDOWER)/plugins/LuaCore.dll
+
+.PHONY: install uninstall where test lint check native
 
 # Each recipe below is one shell command, so an exit inside it ends the target.
 
@@ -68,6 +79,16 @@ uninstall:
 
 test:
 	luajit test/test_$(NAME).lua
+
+native: libs/balloonpad.dll
+
+libs/balloonpad.dll: native/balloonpad.c
+	@if [ -z "$(LUA_INC)" ]; then echo "No Lua 5.1 headers found; set LUA_INC." >&2; exit 1; fi; \
+	if [ ! -f "$(LUACORE)" ]; then echo "$(LUACORE) not found; set WINDOWER." >&2; exit 1; fi; \
+	mkdir -p libs && \
+	$(CC32) -O2 -Wall -shared -static-libgcc -o $@.tmp $< -I"$(LUA_INC)" "$(LUACORE)" -lxinput1_3 && \
+	mv -f $@.tmp $@ && \
+	echo "Built $@ (then //lua reload balloon in game)"
 
 lint:
 	luacheck .
