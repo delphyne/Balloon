@@ -199,7 +199,7 @@ function moving_check()
 end
 
 windower.register_event('incoming chunk',function(id,original,modified,injected,blocked)
-	if S{'chunk', 'all'}[balloon.debug] then print("Chunk: " .. '0x%02X':format(id) .. " original: " .. original) end
+	if S{'chunk', 'all'}[balloon.debug] then print("Chunk: " .. ('0x%02X'):format(id) .. " original: " .. original) end
 
 	--会話中かの確認 (Check if you have left a conversation)
 	if S{LEAVE_CONVERSATION_PACKET, ZONE_OUT_PACKET}[id] then
@@ -259,6 +259,7 @@ function process_balloon(npc_text, mode)
 		ui:set_type(mode)
 	end
 
+	local result = npc_text
 	-- mode 1, blank log lines and visible balloon
 	if settings.DisplayMode == 1 then
 		if npc_prefix == "" then
@@ -463,16 +464,16 @@ windower.register_event("addon command", function(command, ...)
 		if not args:empty() then
 			local tp = 'themes/'..args[1]..'/theme.xml'
 			if not windower.file_exists(windower.addon_path..tp) then
-				log("theme.xml not found under %s":format(tp))
+				log(("theme.xml not found under %s"):format(tp))
 				return
 			end
 
 			local old_theme = settings.Theme
 			settings.Theme = args[1]
 			apply_theme()
-			log("changed theme from '%s' to '%s'":format(old_theme, settings.Theme))
+			log(("changed theme from '%s' to '%s'"):format(old_theme, settings.Theme))
 		else
-			log("current theme is '%s' (default: %s)":format(settings.Theme, defaults.Theme))
+			log(("current theme is '%s' (default: %s)"):format(settings.Theme, defaults.Theme))
 		end
 
 	elseif command == 'scale' then
@@ -480,27 +481,27 @@ windower.register_event("addon command", function(command, ...)
 		if not args:empty() then
 			settings.Scale = tonumber(args[1])
 			ui:scale(settings.Scale)
-			log("scale changed from %.2f to %.2f":format(old_scale, settings.Scale))
+			log(("scale changed from %.2f to %.2f"):format(old_scale, settings.Scale))
 		else
-			log("current scale is %.2f (default: %.2f)":format(settings.Scale, defaults.Scale))
+			log(("current scale is %.2f (default: %.2f)"):format(settings.Scale, defaults.Scale))
 		end
 
 	elseif command == 'delay' then
 		local old_delay = settings.NoPromptCloseDelay
 		if not args:empty() then
 			settings.NoPromptCloseDelay = tonumber(args[1])
-			log("promptless close delay changed from %d to %d":format(old_delay, settings.NoPromptCloseDelay))
+			log(("promptless close delay changed from %d to %d"):format(old_delay, settings.NoPromptCloseDelay))
 		else
-			log("current promptless close delay is %d (default: %d)":format(old_delay, defaults.NoPromptCloseDelay))
+			log(("current promptless close delay is %d (default: %d)"):format(old_delay, defaults.NoPromptCloseDelay))
 		end
 
 	elseif command == 'text_speed' then
 		local old_speed = settings.TextSpeed
 		if not args:empty() then
 			settings.TextSpeed = tonumber(args[1])
-			log("text speed changed from %d to %d":format(old_speed, settings.TextSpeed))
+			log(("text speed changed from %d to %d"):format(old_speed, settings.TextSpeed))
 		else
-			log("current text speed is %d (default: %d)":format(settings.TextSpeed, defaults.TextSpeed))
+			log(("current text speed is %d (default: %d)"):format(settings.TextSpeed, defaults.TextSpeed))
 		end
 
 	elseif command == 'animate' then
