@@ -199,12 +199,18 @@ function moving_check()
 end
 
 windower.register_event('incoming chunk',function(id,original,modified,injected,blocked)
-	if S{'chunk', 'all'}[balloon.debug] then print("Chunk: " .. ('0x%02X'):format(id) .. " original: " .. original) end
+	-- id and length only; printing raw packet bytes floods the console and can crash the client
+	if S{'chunk', 'all'}[balloon.debug] then print("Incoming chunk: " .. ('0x%02X'):format(id) .. " len: " .. #original) end
 
 	--会話中かの確認 (Check if you have left a conversation)
 	if S{LEAVE_CONVERSATION_PACKET, ZONE_OUT_PACKET}[id] then
 		close()
 	end
+end)
+
+-- debug only: lets you check whether anything is sent when dialogue is advanced
+windower.register_event('outgoing chunk',function(id,original,modified,injected,blocked)
+	if S{'chunk', 'all'}[balloon.debug] then print("Outgoing chunk: " .. ('0x%02X'):format(id) .. " len: " .. #original) end
 end)
 
 windower.register_event('incoming text',function(original,modified,mode,modified_mode,blocked)
@@ -364,7 +370,12 @@ function SubCharactersPreShift(str)
 	local new_str = str
 	if S{'chars', 'all'}[balloon.debug] then print("Pre-charsub pre-shift: " .. new_str) end
 	new_str = string.gsub(new_str, string.char(0x81, 0x40), '    ') -- tab
-	new_str = string.gsub(new_str, string.char(0x81, 0xF4), '[BL_note]') -- musical note
+	-- the game uses its own codes for musical symbols (chars.note is 0x81ED, not the
+	-- standard shift-jis 0x81F4), which windower.from_shift_jis cannot convert
+	new_str = string.gsub(new_str, chars.note, '[BL_note]') -- musical note
+	new_str = string.gsub(new_str, string.char(0x81, 0xF4), '[BL_note]') -- musical note (standard shift-jis)
+	new_str = string.gsub(new_str, chars.sharp, '[BL_sharp]') -- musical sharp
+	new_str = string.gsub(new_str, chars.flat, '[BL_flat]') -- musical flat
 	new_str = string.gsub(new_str, chars.bstar, '[BL_bstar]') -- empty star
 	new_str = string.gsub(new_str, chars.wstar, '[BL_wstar]') -- full star
 	new_str = string.gsub(new_str, chars.wave, '[BL_wave]') -- wide tilde
@@ -390,6 +401,8 @@ function SubCharactersPostShift(str)
 	local new_str = str
 	if S{'chars', 'all'}[balloon.debug] then print("Pre-charsub post-shift: " .. new_str) end
 	new_str = string.gsub(new_str, '%[BL_note]', '♪')
+	new_str = string.gsub(new_str, '%[BL_sharp]', '♯')
+	new_str = string.gsub(new_str, '%[BL_flat]', '♭')
 	new_str = string.gsub(new_str, '%[BL_bstar]', '☆')
 	new_str = string.gsub(new_str, '%[BL_wstar]', '★')
 	new_str = string.gsub(new_str, '%[BL_wave]', '~')

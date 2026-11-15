@@ -108,6 +108,9 @@ package.preload['chat.chars'] = function()
         bstar = string.char(0x81, 0x99),
         wstar = string.char(0x81, 0x9A),
         wave = string.char(0x81, 0x60),
+        note = string.char(0x81, 0xED),
+        sharp = string.char(0x81, 0xEB),
+        flat = string.char(0x81, 0xEC),
     }
 end
 
@@ -232,6 +235,11 @@ check('element symbols become coloured words', shown_text(),
 line = 'Iroha : La la' .. string.char(0x81, 0xF4) .. ' ' .. string.char(0x81, 0x99) .. PROMPT
 incoming_text(line, line, 150, 150, false)
 check('shift-jis symbols become unicode', shown_text(), '\n La la♪ ☆')
+
+-- the game sends its own codes for musical symbols, which are not valid shift-jis
+line = 'Iroha : La la' .. string.char(0x81, 0xED) .. ' ' .. string.char(0x81, 0xEB) .. string.char(0x81, 0xEC) .. PROMPT
+incoming_text(line, line, 150, 150, false)
+check('game musical symbol codes become unicode', shown_text(), '\n La la♪ ♯♭')
 
 line = 'Iroha : First line.' .. NEWLINE .. 'Second line.' .. PROMPT
 incoming_text(line, line, 150, 150, false)
